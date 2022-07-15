@@ -1,30 +1,13 @@
+from tensorflow.keras.applications.resnet50 import ResNet50
 
+from tensorflow.keras.preprocessing import image
+
+from tensorflow.keras.applications.resnet50 import preprocess_input, decode_predictions
+
+import numpy as np
 import os
 
-fp = open ("result.txt","w")
-
-
-
-def extract(path):
-
-    import tarfile
-
-
-
-    if path.endswith("tgz") or path.endswith("gz"):
-
-        dir_path = os.path.dirname(path)
-
-        tar = tarfile.open(path)
-
-        tar.extractall(path=dir_path)
-
-        tar.close()
-
-    else:
-
-        raise RuntimeError("Could not decompress the file: " + path)
-
+fp=open("result_new.txt","w")
 
 
 
@@ -34,103 +17,70 @@ tflite_model_file = os.path.join(model_dir,"resnet50_uint8_tf2.1_20200911_quant.
 tflite_model_buf = open(tflite_model_file,"rb").read()
 
 
-
-
+# Get TFLite model from buffer
 try:
-
     import tflite
 
-
-
     tflite_model = tflite.Model.GetRootAsModel(tflite_model_buf, 0)
-
 except AttributeError:
-
     import tflite.Model
-
-
 
     tflite_model = tflite.Model.Model.GetRootAsModel(tflite_model_buf, 0)
 
 
 
-
-from PIL import Image
-
-from matplotlib import pyplot as plt
-
-import numpy as np
+# 預先訓練好的模型 -- ResNet50
 
 
+model = ResNet50(weights='imagenet')
+
+fipt = open("label.txt","r")
+#origin = fipt.readlines()
 
 image_list=[]
-
+accu = 0
 for i in range(100):
+    
+    origin = fipt.readline().splitlines()
     for j in range(10):
-        if(i == 99 and j == 9): break   
-        image_path = '/home/hsiancheng/ResNet50/image_classification/'+str(i)+'-'+str(j)+'.jpeg'
+        if(i == 99 and j == 9): break
+#        origin = origin  
+        img_path = '/home/hsiancheng/ResNet50/image_classification/'+str(i)+'-'+str(j)+'.jpeg'
 
-        resized_image = Image.open(image_path).resize((224, 224))
-        image_data = np.asarray(resized_image).astype("float32")
+# 任意一張圖片，例如大象
 
+        #img_path = './ResNet50/kite.jpg'
 
+# 載入圖檔，並縮放寬高為 (224, 224) 
 
-        image_data = np.expand_dims(image_data, axis=0)
+        img = image.load_img(img_path, target_size=(224, 224))
 
+# 加一維，變成 (1, 224, 224, 3)，最後一維是色彩
 
-        image_data[:, :, :, 0] = 2.0 / 255.0 * image_data[:, :, :, 0] - 1
+        x = image.img_to_array(img)
 
-        image_data[:, :, :, 1] = 2.0 / 255.0 * image_data[:, :, :, 1] - 1
+        x = np.expand_dims(x, axis=0)
 
-        image_data[:, :, :, 2] = 2.0 / 255.0 * image_data[:, :, :, 2] - 1
+# 特徵縮放，每個特徵減掉該特徵的平均數
+        #print(type(x))
+        x = preprocess_input(x)
+        #print(type(x))
+        image_list.append(x)
+# 預測
 
+#        preds = model.predict(x)
 
-        #print("input", image_data.shape)
+# decode the results into a list of tuples (class, description, probability)
+        
+ #       origin = fipt.readline().splitlines()
+#        print(origin[0])
+ #       if(str(decode_predictions(preds, top=1)[0][0][0]) == str(origin[0])):
+  #          accu = accu + 1
+        #origin = str(origin.split(", ",1))
 
-
-
-        image_list.append(image_data)
-
-
-
-
-
-
-
-
-"""
-#image_path = '/home/hsiancheng/ResNet50/kite.jpg'
-
-
-
-resized_image = Image.open(image_path).resize((224, 224))
-
-    #plt.imshow(resized_image)
-
-    #plt.show()
-
-image_data = np.asarray(resized_image).astype("float32")
-
-
-
-image_data = np.expand_dims(image_data, axis=0)
-
-
-image_data[:, :, :, 0] = 2.0 / 255.0 * image_data[:, :, :, 0] - 1
-
-image_data[:, :, :, 1] = 2.0 / 255.0 * image_data[:, :, :, 1] - 1
-
-image_data[:, :, :, 2] = 2.0 / 255.0 * image_data[:, :, :, 2] - 1
-
-
-print("input", image_data.shape)
-
-
-
-image_list.append(image_data)
-
-
-"""
+# 顯示預測前3名的答案
+   #     fp.write(str(origin[0]) + "  " + str( decode_predictions(preds, top=1)[0][0][0])+"\n")
+    #    print( origin[0] ,' Predicted:', decode_predictions(preds, top=1)[0][0][0])
 
 
 
@@ -194,6 +144,7 @@ for i in range(999):
     tvm_output = module.get_output(0).numpy()
     
     total_opt.append(tvm_output)
+    print("load img ",i,"\n")
 
 
 
@@ -203,7 +154,7 @@ for i in range(999):
 
 
 
-label_path = '/home/hsiancheng/ResNet50/imagenet1000_labels.txt'
+label_path = '/home/hsiancheng/label.txt'
 pre_num = []
 
 predictions=[]
@@ -219,14 +170,24 @@ for i in range(999):
     predictions.append( np.squeeze(total_opt[i]))
 
     prediction.append( np.argmax(predictions[i]))
+    print("run predict ",i,"\n")
 
+    print("origin: ",labels[int(i/10)]," predict: ",labels[prediction[i]])
 
-    print("origin: ",int(i/10)," predict: ",labels[prediction[i]])
-
-    if( int(i/10) == labels[prediction[i]].split(' ',1)[0] ):
+    if( labels[int(i/10)] == labels[prediction[i]] ):
         accu = accu +1
 
 
 
 
-print("accuracy == ",float(accu/999))
+print("accuracy == ",(accu/999))
+
+
+"""
+
+print(origin[0])
+#print(origin)
+print(np.size(origin))
+print(accu)
+print("accuracy == ",accu/999)
+"""
