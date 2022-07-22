@@ -53,7 +53,6 @@ if __name__ == '__main__':
     pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
     image = utils.draw_bbox(original_image, pred_bbox)
     image = Image.fromarray(image.astype(np.uint8))
-    image.save('result.jpg')
     image.show()
     image = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
     cv2.imwrite("kite_yolov3_result.jpg", image)

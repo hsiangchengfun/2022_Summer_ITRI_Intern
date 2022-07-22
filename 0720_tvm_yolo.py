@@ -14,9 +14,6 @@ from core.yolov4 import filter_boxes
 # sphinx_gallery_start_ignore
 from tvm import testing
 
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications.resnet50 import preprocess_input
-
 testing.utils.install_request_hook(depth=3)
 # sphinx_gallery_end_ignore
 ######################################################################
@@ -24,6 +21,7 @@ testing.utils.install_request_hook(depth=3)
 # ----------------------------------------------
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 # ######################################################################
 # # Load pretrained TFLite model
 # # ----------------------------
@@ -51,11 +49,21 @@ input_size = 416
 dir = os.getcwd()
 img_path = os.path.join(dir, file)
 
-img = image.load_img(img_path, target_size=(input_size, input_size))
-original_data = image.img_to_array(img)
-original_data = original_data.astype(int)
-image_data = np.expand_dims(original_data, axis=0)
-image_data = preprocess_input(image_data)
+
+original_image = cv2.imread("kite.jpg")
+original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+# print(original_image)
+image_data = cv2.resize(original_image, (input_size, input_size))
+image_data = image_data / 255.
+cv2.waitKey(0)
+cv2.imshow("kite", image_data)
+image_data = np.expand_dims(image_data, axis=0)
+image_data = np.asarray(image_data).astype(np.float32)
+
+# img = image.load_img(img_path, target_size=(input_size, input_size))
+# original_data = image.img_to_array(img)
+# original_data = original_data.astype(int)
+# image_data = preprocess_input(image_data)
 
 ######################################################################
 # Compile the model with relay
@@ -106,12 +114,14 @@ module.set_input(input_tensor, tvm.nd.array(image_data))
 module.run()
 # print("tvm inference cost: {}".format(time.time() - t0))
 # Get output
-tvm_output = module.get_output(0).numpy()
+# tvm_output = module.get_output(0).numpy()
 
 # pred = [interpreter.get_tensor(output_details[i]['index']) for i in range(len(output_details))]
-pred0 = tvm_output
-pred1 = np.zeros(tvm_output.shape, dtype=np.float32)
-print(tvm_output.shape)
+pred0 = module.get_output(0).numpy()
+pred1 = module.get_output(1).numpy()
+# print(pred0.shape)
+# print(pred1.shape)
+# print(tvm_output)
 boxes, pred_conf = filter_boxes(pred0, pred1, score_threshold=0.25,
 								input_shape=tf.constant([input_size, input_size]))
 boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
@@ -124,8 +134,10 @@ boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression
 	score_threshold=0.25
 )
 pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
-images = utils.draw_bbox(original_data, pred_bbox)
-images = Image.fromarray(images.astype(np.float32))
-images.show()
-images = cv2.cvtColor(np.array(images), cv2.COLOR_BGR2RGB)
+images = utils.draw_bbox(original_image, pred_bbox)
+# print(images.shape)
+images = images.astype(np.float32)
+images = cv2.cvtColor(images, cv2.COLOR_BGR2RGB)
+# cv2.imshow("kite", images)
+# cv2.waitKey(0)
 cv2.imwrite("kite_yolov3_result.jpg", images)
