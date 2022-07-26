@@ -43,26 +43,35 @@ except AttributeError:
 ######################################################################
 # Load a test image
 # -----------------
+input_size = 416
+import cv2
+import glob
+img_list = []
+org_list = []
+for img in glob.glob("yolo_images/*.jpg"):
+
+    original_image = cv2.imread(img)
+    original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
+    org_list.append(original_image)
+    image_data = cv2.resize(original_image, (input_size, input_size))
+    image_data = image_data / 255.
+
+    image_data = np.expand_dims(image_data, axis=0)
+    image_data = np.asarray(image_data).astype(np.float32)
+
+
+    img_list.append(image_data)
+
+
+
+
 
 file = "kite.jpg"
-input_size = 416
+
 dir = os.getcwd()
 img_path = os.path.join(dir, file)
 
 
-original_image = cv2.imread("kite.jpg")
-original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
-# print(original_image)
-image_data = cv2.resize(original_image, (input_size, input_size))
-image_data = image_data / 255.
-cv2.waitKey(0)
-cv2.imshow("kite", image_data)
-image_data = np.expand_dims(image_data, axis=0)
-image_data = np.asarray(image_data).astype(np.float32)
-
-
-
-######################################################################
 # Compile the model with relay
 # ----------------------------
 
@@ -84,54 +93,40 @@ with transform.PassContext(opt_level=3):
     lib = relay.build(mod, target, params=params)
 
 
-
 import tvm
 from tvm import te
 from tvm.contrib import graph_executor as runtime
 # Create a runtime executor module
 module = runtime.GraphModule(lib["default"](tvm.cpu()))
 # Feed input data
-module.set_input(input_tensor, tvm.nd.array(image_data))
-# Run
+i=0
+for i in range(50):
+	module.set_input(input_tensor, tvm.nd.array(img_list[i]))
 
-module.run()
+	module.run()
 
-pred0 = module.get_output(0).numpy()
-pred1 = module.get_output(1).numpy()
+	pred0 = module.get_output(0).numpy()
+	pred1 = module.get_output(1).numpy()
 
-boxes, pred_conf = filter_boxes(pred0, pred1, score_threshold=0.25,
-								input_shape=tf.constant([input_size, input_size]))
-boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
-	boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
-	scores=tf.reshape(
-		pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
-	max_output_size_per_class=50,
-	max_total_size=50,
-	iou_threshold=0.45,
-	score_threshold=0.25
-)
-pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
-images = utils.draw_bbox(original_image, pred_bbox)
+	boxes, pred_conf = filter_boxes(pred0, pred1, score_threshold=0.25,
+									input_shape=tf.constant([input_size, input_size]))
+	boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
+		boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
+		scores=tf.reshape(
+			pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
+		max_output_size_per_class=50,
+		max_total_size=50,
+		iou_threshold=0.45,
+		score_threshold=0.25
+	)
+	pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
+	images = utils.draw_bbox(org_list[i], pred_bbox)
+	
+	images = images.astype(np.float32)
+	images = cv2.cvtColor(images, cv2.COLOR_BGR2RGB)
 
-images = images.astype(np.float32)
-images = cv2.cvtColor(images, cv2.COLOR_BGR2RGB)
+	path = '/home/hsiancheng/Resnet50/yolo_results'
 
-cv2.imshow("kite", images)
-
-cv2.imwrite("kite_yolov3_result.jpg", images)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	name = str(i)+".jpg"
+	cv2.imwrite(name, images)
 

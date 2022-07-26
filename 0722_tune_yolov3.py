@@ -122,35 +122,6 @@ unoptimized = {
 
 print(unoptimized)
 
-"""
-
-
-
-module.set_input(input_tensor, tvm.nd.array(images_data))
-
-
-t0 = time.time()
-module.run()
-cost = time.time() - t0
-
-unoptimized.append(cost*1000)
-output_shape = (1, 1000)
-
-tvm_output = module.get_output(0).numpy()
-
-
-scores = softmax(tvm_output)
-scores = np.squeeze(scores)
-pred = np.argmax(scores)
-
-unoptimized = np.asarray(unoptimized)
-unoptimized = {
-    "mean": np.mean(unoptimized),
-    "median": np.median(unoptimized),
-    "std": np.std(unoptimized),
-}
-print(unoptimized)  
-"""
 
 
 
@@ -175,15 +146,20 @@ tuning_option = {
     "measure_option": autotvm.measure_option(
         builder=autotvm.LocalBuilder(build_func="default"), runner=runner
     ),
-    "tuning_records": "yolov3-autotuning.json",
+    "tuning_records": "yolov3-autotuning.tfrecord",
 }
 
 
 
-
-
 # begin by extracting the tasks from the tflite model
+
 tasks = autotvm.task.extract_from_program(mod["main"], target=target, params=params)
+
+#tasks = autotvm.task.extract_from_program(mod["main"], target=target, params=params)
+print(type(tasks))
+print(tasks)
+print("\n\n\n")
+
 
 # Tune the extracted tasks sequentially.
 for i, task in enumerate(tasks):

@@ -322,22 +322,6 @@ tuning_option = {
     "tuning_records": "0722_resnet-50-autotuning.tfrecord",
 }
 
-################################################################################
-# .. admonition:: Defining the Tuning Search Algorithm
-#
-#   By default this search is guided using an `XGBoost Grid` algorithm.
-#   Depending on your model complexity and amount of time available, you might
-#   want to choose a different algorithm.
-
-
-################################################################################
-# .. admonition:: Setting Tuning Parameters
-#
-#   In this example, in the interest of time, we set the number of trials and
-#   early stopping to 10. You will likely see more performance improvements if
-#   you set these values to be higher but this comes at the expense of time
-#   spent tuning. The number of trials required for convergence will vary
-#   depending on the specifics of the model and the target platform.
 
 # begin by extracting the tasks from the tflite model
 tasks = autotvm.task.extract_from_program(mod["main"], target=target, params=params)
@@ -356,23 +340,7 @@ for i, task in enumerate(tasks):
         ],
     )
 
-################################################################################
-# The output from this tuning process will look something like this:
-#
-# .. code-block:: bash
-#
-#   # [Task  1/24]  Current/Best:    9.32/  24.18 GFLOPS | Progress: (192/1000) | 365.02 s Done.
-#   # [Task  2/24]  Current/Best:   22.39/ 177.59 GFLOPS | Progress: (960/1000) | 976.17 s Done.
-################################################################################
-# Compiling an Optimized Model with Tuning Data
-# ----------------------------------------------
-#
-# As an output of the tuning process above, we obtained the tuning records
-# stored in ``resnet-50-v2-autotuning.json``. The compiler will use the results to
-# generate high performance code for the model on your specified target.
-#
-# Now that tuning data for the model has been collected, we can re-compile the
-# model using optimized operators to speed up our computations.
+
 
 with autotvm.apply_history_best(tuning_option["tuning_records"]):
     with tvm.transform.PassContext(opt_level=3, config={}):
@@ -385,10 +353,6 @@ module = runtime.GraphModule(lib["default"](dev))
 # Verify that the optimized model runs and produces the same results:
 
 dtype = "float32"
-#module.set_input(input_tensor, img_data)
-#module.run()
-#output_shape = (1, 1000)
-#tvm_output = module.get_output(0, tvm.nd.empty(output_shape)).numpy()
 
 scores=[]
 
@@ -416,21 +380,6 @@ for i in range(999):
 
 
 
-################################################################################
-# Verifying that the predictions are the same:
-#
-# .. code-block:: bash
-#
-#   # class='n02123045 tabby, tabby cat' with probability=0.610550
-
-################################################################################
-# Comparing the Tuned and Untuned Models
-# --------------------------------------
-# We want to collect some basic performance data associated with this optimized
-# model to compare it to the unoptimized model. Depending on your underlying
-# hardware, number of iterations, and other factors, you should see a performance
-# improvement in comparing the optimized model to the unoptimized model.
-
 import timeit
 
 timing_number = 10
@@ -451,74 +400,8 @@ optimized = {"mean": np.mean(optimized), "median": np.median(optimized), "std": 
 print("optimized: %s" % (optimized))
 print("unoptimized: %s" % (unoptimized))
 
-################################################################################
-# Final Remarks
-# -------------
-#
-# In this tutorial, we gave a short example of how to use the TVM Python API
-# to compile, run, and tune a model. We also discussed the need for pre and
-# post-processing of inputs and outputs. After the tuning process, we
-# demonstrated how to compare the performance of the unoptimized and optimize
-# models.
-#
-# Here we presented a simple example using ResNet-50 v2 locally. However, TVM
-# supports many more features including cross-compilation, remote execution and
-# profiling/benchmarking.   
+ 
    
    
-   
-   
- 	
-"""
-
-for i in range(999):
-	AP[int(i/10)] = TP[int(i/10)] / ( TP[int(i/10)] + FP[int(i/10)] )
-	AR[int(i/10)] = TP[int(i/10)] / ( TP[int(i/10)] + FN[int(i/10)] )
-
-for i in range(100):
-	Total_AP += AP[int(i)]
-	Total_AR += AR[int(i)]
-	
-	
-for i in range(100):
-	print(i," : "," AP ",AP[i]," AR ",AR[i],"\n")
 
 
-print("ttAP ",Total_AP," size ",len(used_label),"\n")
-print("ttAR ",Total_AR," size ",100,"\n")
-
-mAP = Total_AP / len(used_label)
-
-mAR = Total_AR / 100
-
-# FanMoo print(len(used_label))
-
-print("mAP : ",mAP)
-print("mAR : ",mAR)
-
-"""
-
-
-#print("accuracy == ",(accu/999))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-"""
-
-print(origin[0])
-#print(origin)
-print(np.size(origin))
-print(accu)
-print("accuracy == ",accu/999)
-"""
