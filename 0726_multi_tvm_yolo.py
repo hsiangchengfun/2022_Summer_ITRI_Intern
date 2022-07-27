@@ -65,12 +65,12 @@ for img in glob.glob("yolo_images/*.jpg"):
 
 
 
-
+"""
 file = "kite.jpg"
 
 dir = os.getcwd()
 img_path = os.path.join(dir, file)
-
+"""
 
 # Compile the model with relay
 # ----------------------------
