@@ -44,6 +44,9 @@ except AttributeError:
 # Load a test image
 # -----------------
 input_size = 416
+input_tensor = "input_1"
+input_shape = (1, input_size, input_size, 3)
+input_dtype = "float32"
 import cv2
 import glob
 img_list = []
@@ -76,9 +79,7 @@ img_path = os.path.join(dir, file)
 # ----------------------------
 
 # TFLite input tensor name, shape and type
-input_tensor = "input_1"
-input_shape = (1, input_size, input_size, 3)
-input_dtype = "float32"
+
 
 # Parse TFLite model and convert it to a Relay module
 from tvm import relay, transform
